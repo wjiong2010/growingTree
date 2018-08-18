@@ -25,6 +25,8 @@ int main()
 
     test_table_32bit[0] = 0x04030201;
     test_table_32bit[1] = 0x14131211;
+    
+    printf("hello everyone!\n");
 
     p_point_32 = get_test_table_point();
     p_point_16 = get_test_table_point();
