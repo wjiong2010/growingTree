@@ -24,8 +24,6 @@ void uart0_init()
 	/* 设置数据格式 */
 	ULCON0 = 0x00000003; /* 8n1: 8个数据位, 无较验位, 1个停止位 */
 
-	/*  */
-
 }
 
 int putchar(int c)
