@@ -75,3 +75,16 @@ void printHex(unsigned int val)
 	}
 }
 
+
+void uart_print1(void)
+{
+	puts("uart_print1\r\n");
+}
+
+
+void uart_print2(void)
+{
+	puts("uart_print2\r\n");
+}
+
+

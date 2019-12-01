@@ -2,8 +2,44 @@
 .text
 .global _start
 
-_start:
 
+_start:
+	b reset  /* vector 0 : reset */
+	ldr pc, _undefined_instruction /* vector 4 : und */
+
+_undefined_instruction:
+	.word undefined_instruction
+
+undefined_instruction:
+	/* 执行到这里之前:
+	 * 1. lr_und保存有被中断模式中的下一条即将执行的指令的地址
+	 * 2. SPSR_und保存有被中断模式的CPSR
+	 * 3. CPSR中的M4-M0被设置为11011, 进入到und模式
+	 * 4. 跳到0x4的地方执行程序 
+	 */
+
+	/* sp_und未设置, 先设置它 */
+	ldr sp, =0x34000000
+
+	/* 在und异常处理函数中有可能会修改r0-r12, 所以先保存 */
+	/* lr是异常处理完后的返回地址, 也要保存 */
+	stmdb sp!, {r0-r12, lr}  
+	
+	/* 保存现场 */
+	/* 处理und异常 */
+	mrs r0, cpsr
+	ldr r1, =und_string
+	bl print_excepiton
+	
+	/* 恢复现场 */
+	ldmia sp!, {r0-r12, pc}^  /* ^会把spsr的值恢复到cpsr里 */
+	
+und_string:
+	.string "undefined instruction exception"
+
+.align 4
+
+reset:
 	/* 关闭看门狗 */
 	ldr r0, =0x53000000
 	ldr r1, =0
@@ -64,6 +100,17 @@ _start:
 
 	/* 清除BSS段 */
 	bl clean_bss
+
+	ldr pc, =sdram
+sdram:
+	/*初始化串口*/
+	bl uart0_init
+
+	bl uart_print1
+	/* 故意加入一条未定义指令 */
+und_code:
+	.word 0xdeadc0de  /* 未定义指令 */
+	bl uart_print2
 
 	//bl main  /* 使用BL命令相对跳转, 程序仍然在NOR/sram执行 */
 	ldr pc, =main  /* 绝对跳转, 跳到SDRAM */

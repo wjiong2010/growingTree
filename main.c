@@ -11,11 +11,11 @@ int g_B;
 
 int main(void)
 {
-	uart0_init();
-
 	puts("\n\rg_A = ");
 	printHex(g_A);
 	puts("\n\r");
+
+	puts("john test\r\n");
 
 	while (1)
 	{
