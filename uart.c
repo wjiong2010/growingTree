@@ -76,9 +76,11 @@ void printHex(unsigned int val)
 }
 
 
-void uart_print1(void)
+void uart_print1(unsigned int cpsr)
 {
-	puts("uart_print1\r\n");
+	puts("\r\ncpsr=");
+	printHex(cpsr);
+	puts(" uart_print1\r\n");
 }
 
 

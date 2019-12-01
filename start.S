@@ -5,7 +5,8 @@
 
 _start:
 	b reset  /* vector 0 : reset */
-	ldr pc, _undefined_instruction /* vector 4 : und */
+	ldr pc, _undefined_instruction 	/* vector 4 : und */
+	ldr pc, _software_interrupt 	/* vector 8 : und */
 
 _undefined_instruction:
 	.word undefined_instruction
@@ -35,7 +36,46 @@ undefined_instruction:
 	ldmia sp!, {r0-r12, pc}^  /* ^会把spsr的值恢复到cpsr里 */
 	
 und_string:
-	.string "undefined instruction exception"
+	.string "undefined_instruction exception"
+
+.align 4
+
+_software_interrupt:
+	.word software_interrupt
+
+software_interrupt:
+	/* 执行到这里之前:
+	 * 1. lr_svc保存有被中断模式中的下一条即将执行的指令的地址
+	 * 2. SPSR_svc保存有被中断模式的CPSR
+	 * 3. CPSR中的M4-M0被设置为10011, 进入到svc模式
+	 * 4. 跳到0x8的地方执行程序 
+	 */
+
+	/* sp_und未设置, 先设置它 */
+	ldr sp, =0x33f00000
+
+	/* 在und异常处理函数中有可能会修改r0-r12, 所以先保存 */
+	/* lr是异常处理完后的返回地址, 也要保存 */
+	stmdb sp!, {r0-r12, lr}  
+
+	/* 保存LR值， 用来提取SWI命令的参数 */
+	mov r4, lr
+	
+	/* 保存现场 */
+	/* 处理und异常 */
+	mrs r0, cpsr
+	ldr r1, =swi_string
+	bl print_excepiton
+
+	sub r4, r4, #4
+	mov r0, r4
+	bl print_swi_value
+	
+	/* 恢复现场 */
+	ldmia sp!, {r0-r12, pc}^  /* ^会把spsr的值恢复到cpsr里 */
+	
+swi_string:
+	.string "software_interrupt exception"
 
 .align 4
 
@@ -74,8 +114,6 @@ reset:
 	/* 一旦设置PLL, 就会锁定lock time直到PLL输出稳定
 	 * 然后CPU工作于新的频率FCLK
 	 */
-	
-	
 
 	/* 设置内存: sp 栈 */
 	/* 分辨是nor/nand启动
@@ -101,6 +139,17 @@ reset:
 	/* 清除BSS段 */
 	bl clean_bss
 
+	/* 此时CPU工作在svc模式,低5bit(Mode bit = 0b10011)。
+	 * 通过直接修改后4bits为0的方式改为usr模式(Mode bits = 0b10000) 
+	 * usr模式不能直接操作硬件，只能靠中断的形式切换到其他模式
+	 */
+	mrs r0, cpsr
+	bic r0, r0, #0xf
+	msr cpsr, r0
+
+	/* 设置在usr 模式下的栈 */
+	ldr sp, =0x33e00000
+
 	ldr pc, =sdram
 sdram:
 	/*初始化串口*/
@@ -111,6 +160,9 @@ sdram:
 und_code:
 	.word 0xdeadc0de  /* 未定义指令 */
 	bl uart_print2
+
+	/* 执行swi命令，触发swi中断 */
+	swi 0x123
 
 	//bl main  /* 使用BL命令相对跳转, 程序仍然在NOR/sram执行 */
 	ldr pc, =main  /* 绝对跳转, 跳到SDRAM */
