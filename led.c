@@ -6,14 +6,31 @@ void delay(volatile int d)
 	while (d--);
 }
 
+void led_init(void)
+{
+	/* 设置GPFCON让GPF4/5/6配置为输出引脚 */
+	GPFCON &= ~((3<<8) | (3<<10) | (3<<12));
+	GPFCON |=  ((1<<8) | (1<<10) | (1<<12));
+
+	GPFDAT &= ~(7<<4);
+}
+
+void turn_on_led(int led_idx)
+{
+	GPFDAT &= ~(1<<led_idx);
+}
+
+void turn_off_led(int led_idx)
+{
+	GPFDAT |= (1<<led_idx);
+}
+
 int led_test(void)
 {
 	int val = 0;  /* val: 0b000, 0b111 */
 	int tmp;
 
-	/* 设置GPFCON让GPF4/5/6配置为输出引脚 */
-	GPFCON &= ~((3<<8) | (3<<10) | (3<<12));
-	GPFCON |=  ((1<<8) | (1<<10) | (1<<12));
+
 
 	/* 循环点亮 */
 	while (1)

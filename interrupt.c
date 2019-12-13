@@ -1,4 +1,5 @@
 #include "s3c2440_soc.h"
+#include "led.h"
 
 /* 
  * INTPND 用来清中断 
@@ -46,13 +47,96 @@ void eint_src_init(void)
 
 }
 
+static void key_irq_hdlr(volatile unsigned int bit)
+{
+	/*
+		S2 : EINT0 -> GPF0 		控制   GPF4	LED1 -> D10
+		S3 : EINT2 -> GPF2 		控制 GPF5		LED2 -> D11
+		S4 : EINT11 -> GPG3 	控制	 GPF6	LED4 -> D12
+		S5 : EINT19 -> GPG11 	控制		ALL
+	*/
+	int eint_pnd = EINTPEND;
+
+	switch (bit)
+	{
+		case 0:
+		{
+			if (GPFDAT & (1<<0))
+			{
+				turn_off_led(LED_1);
+			}
+			else
+			{
+				turn_on_led(LED_1);
+			}
+			break;
+		}
+		case 2:
+		{
+			if (GPFDAT & (1<<2))
+			{
+				turn_off_led(LED_2);
+			}
+			else
+			{
+				turn_on_led(LED_2);
+			}
+			break;
+		}
+		case 5:
+		{
+			puts("\r\n");	
+			puts(" GPGDAT=");	
+			printHex(GPGDAT);
+			puts("\r\n");
+
+			if (eint_pnd & (1<<11))
+			{
+				if (GPGDAT & (1<<3))
+				{
+					/* Released */
+					turn_off_led(LED_2);
+				}
+				else
+				{
+					/* Pressed */
+					turn_on_led(LED_2);
+				}
+			}
+			else
+			if (eint_pnd & (1<<19))
+			{
+				if (GPGDAT & (1<<11))
+				{
+					/* Released */
+					turn_off_led(LED_1);
+					turn_off_led(LED_2);
+					turn_off_led(LED_4);
+				}
+				else
+				{
+					/* Pressed */
+					turn_on_led(LED_1);
+					turn_on_led(LED_2);
+					turn_on_led(LED_4);
+				}
+			}
+			
+			break;
+		}
+		default:
+		{
+		}
+	}
+	
+	EINTPEND &= eint_pnd;
+}
 
 void irq_hdlr(void)
 {
-	int eint_pnd = EINTPEND;
 	int src_pnd = SRCPND;
 	int int_pnd = INTPND;
-	
+	#if 0
 	puts("\r\n");	
 	puts(" _irq");	
 	puts(" EINTPEND=");	
@@ -62,10 +146,11 @@ void irq_hdlr(void)
 	puts(" INTPND=");	
 	printHex(INTPND);
 	puts("\r\n");	
-
-	EINTPEND = eint_pnd;
-	SRCPND = src_pnd;
-	INTPND = int_pnd;
+	#else
+	key_irq_hdlr(INTOFFSET);
+	#endif
+	SRCPND &= src_pnd;
+	INTPND &= int_pnd;
 }
 
 
