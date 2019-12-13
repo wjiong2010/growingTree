@@ -11,6 +11,12 @@ int g_B;
 
 int main(void)
 {
+	/* 初始化中断控制器 */
+	eint_init();
+	/* 初始化中断源 */
+	eint_src_init();
+	led_init();
+
 	puts("\n\rg_A = ");
 	printHex(g_A);
 	puts("\n\r");
@@ -29,6 +35,7 @@ int main(void)
 		printHex(g_Char3);
 		puts("\n\r");
 #endif
+
 		putchar(g_Char);
 		g_Char++;
 

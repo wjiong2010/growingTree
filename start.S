@@ -4,10 +4,15 @@
 
 
 _start:
-	b reset  /* vector 0 : reset */
-	ldr pc, _undefined_instruction 	/* vector 4 : und */
-	ldr pc, _software_interrupt 	/* vector 8 : und */
-
+	b reset  						/* vector 0x00 : reset */
+	ldr pc, _undefined_instruction 	/* vector 0x04 : und */
+	ldr pc, _software_interrupt 	/* vector 0x08 : swi */
+	bl halt							/* vector 0x0c : prefetch_abort */
+	bl halt							/* vector 0x10 : data_abort */
+	bl halt							/* vector 0x14 : reserved */
+	ldr	pc, _irq					/* vector 0x18 : irq */
+	bl halt							/* vector 0x1c : fiq */
+	
 _undefined_instruction:
 	.word undefined_instruction
 
@@ -79,6 +84,35 @@ swi_string:
 
 .align 4
 
+_irq:
+	.word irq
+
+irq:
+	/* 执行到这里之前:
+	 * 1. lr_irq保存有被中断模式中的下一条即将执行的指令的地址
+	 * 2. SPSR_irq保存有被中断模式的CPSR
+	 * 3. CPSR中的M4-M0被设置为10010, 进入到irq模式
+	 * 4. 跳到0x4的地方执行程序 
+	 */
+
+	/* sp_irq未设置, 先设置它 */
+	ldr sp, =0x33d00000
+
+	/* 保存现场 */
+	/* 在irq异常处理函数中有可能会修改r0-r12, 所以先保存 */
+	/* lr - 4是异常处理完后的返回地址, 也要保存 */
+	sub lr, lr, #4
+	stmdb sp!, {r0-r12, lr}  
+	
+	
+	/* 处理irq异常 */
+	bl irq_hdlr
+	
+	/* 恢复现场 */
+	ldmia sp!, {r0-r12, pc}^  /* ^会把irq_spsr的值恢复到cpsr里 */
+
+.align 4
+
 reset:
 	/* 关闭看门狗 */
 	ldr r0, =0x53000000
@@ -145,6 +179,7 @@ reset:
 	 */
 	mrs r0, cpsr
 	bic r0, r0, #0xf
+	bic r0, r0, #0x80 	/* 清除CPSR的bit7， 打开IRQ终端 */
 	msr cpsr, r0
 
 	/* 设置在usr 模式下的栈 */
